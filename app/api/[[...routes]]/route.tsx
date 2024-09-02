@@ -5,7 +5,7 @@ import { devtools } from "frog/dev";
 import { serveStatic } from "frog/serve-static";
 // import { neynar } from 'frog/hubs'
 import { handle } from "frog/next";
-import { abi } from "../../abi.ts";
+import { abi } from "../../abi";
 import { ethers } from "ethers";
 import axios from "axios";
 

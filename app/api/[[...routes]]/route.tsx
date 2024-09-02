@@ -1,76 +1,176 @@
 /** @jsxImportSource frog/jsx */
 
-import { Button, Frog, TextInput } from 'frog'
-import { devtools } from 'frog/dev'
+import { Button, Frog, TextInput, parseEther } from "frog";
+import { devtools } from "frog/dev";
+import { serveStatic } from "frog/serve-static";
 // import { neynar } from 'frog/hubs'
-import { handle } from 'frog/next'
-import { serveStatic } from 'frog/serve-static'
-
-const app = new Frog({
-  assetsPath: '/',
-  basePath: '/api',
-  // Supply a Hub to enable frame verification.
-  // hub: neynar({ apiKey: 'NEYNAR_FROG_FM' })
-  title: 'Frog Frame',
-})
+import { handle } from "frog/vercel";
+import { abi } from "../../abi.ts";
+import { ethers } from "ethers";
+import axios from "axios";
 
 // Uncomment to use Edge Runtime
 // export const runtime = 'edge'
 
-app.frame('/', (c) => {
-  const { buttonValue, inputText, status } = c
-  const fruit = inputText || buttonValue
+export const app = new Frog({
+  assetsPath: "/",
+  basePath: "/api",
+  // Supply a Hub to enable frame verification.
+  // hub: neynar({ apiKey: 'NEYNAR_FROG_FM' })
+  title: "Frog Frame",
+});
+
+app.frame("/", (c) => {
   return c.res({
+    action: "/created",
     image: (
       <div
         style={{
-          alignItems: 'center',
-          background:
-            status === 'response'
-              ? 'linear-gradient(to right, #432889, #17101F)'
-              : 'black',
-          backgroundSize: '100% 100%',
-          display: 'flex',
-          flexDirection: 'column',
-          flexWrap: 'nowrap',
-          height: '100%',
-          justifyContent: 'center',
-          textAlign: 'center',
-          width: '100%',
+          alignItems: "center",
+          background: "black",
+          backgroundSize: "100% 100%",
+          display: "flex",
+          flexDirection: "column",
+          flexWrap: "nowrap",
+          height: "100%",
+          justifyContent: "center",
+          textAlign: "center",
+          width: "100%",
         }}
       >
         <div
           style={{
-            color: 'white',
+            color: "white",
             fontSize: 60,
-            fontStyle: 'normal',
-            letterSpacing: '-0.025em',
+            fontStyle: "normal",
+            letterSpacing: "-0.025em",
             lineHeight: 1.4,
             marginTop: 30,
-            padding: '0 120px',
-            whiteSpace: 'pre-wrap',
+            padding: "0 120px",
+            whiteSpace: "pre-wrap",
           }}
         >
-          {status === 'response'
-            ? `Nice choice.${fruit ? ` ${fruit.toUpperCase()}!!` : ''}`
-            : 'Welcome!'}
+          Create Lattery Game!
         </div>
       </div>
     ),
     intents: [
-      <TextInput placeholder="Enter custom fruit..." />,
-      <Button value="apples">Apples</Button>,
-      <Button value="oranges">Oranges</Button>,
-      <Button value="bananas">Bananas</Button>,
-      status === 'response' && <Button.Reset>Reset</Button.Reset>,
+      <TextInput placeholder="Enter eth amount..." />,
+      <Button.Transaction target="/create">Create</Button.Transaction>,
     ],
-  })
-})
+  });
+});
 
-devtools(app, { serveStatic })
+app.frame("/created", async (c) => {
+  const url = "https://eth-sepolia.public.blastapi.io	";
+  const contract = new ethers.Contract(
+    "0x99d3224457679cb10996dd21120d9fc16e0697eb",
+    abi,
+    new ethers.providers.JsonRpcProvider(url)
+  );
+  const gameId = await contract.gameId();
+  const gameUrl = c.url.replace("/create", `/game/${gameId.toNumber()}`);
 
-export const GET = handle(app)
-export const POST = handle(app)
+  return c.res({
+    image: (
+      <div
+        style={{
+          alignItems: "center",
+          background: "black",
+          backgroundSize: "100% 100%",
+          display: "flex",
+          flexDirection: "column",
+          flexWrap: "nowrap",
+          height: "100%",
+          justifyContent: "center",
+          textAlign: "center",
+          width: "100%",
+        }}
+      >
+        <div
+          style={{
+            color: "white",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            fontSize: 60,
+          }}
+        >
+          {gameUrl.slice(0, -1)}
+        </div>
+      </div>
+    ),
+  });
+});
+
+app.transaction("/create", async (c) => {
+  const { inputText = "" } = c;
+
+  await axios.post("https://testnetapi.lum0x.com/frame/validation", {
+    farcasterFid: c.frameData?.fid,
+    frameUrl: c.frameData?.url,
+  });
+
+  return c.contract({
+    abi,
+    chainId: "eip155:11155111",
+    functionName: "create",
+    args: [5n], // default numPlayers
+    to: "0x99d3224457679cb10996dd21120d9fc16e0697eb",
+    value: parseEther(inputText),
+  });
+});
+
+app.frame("/joined", async (c) => {
+  return c.res({
+    image: (
+      <div
+        style={{
+          alignItems: "center",
+          background: "black",
+          backgroundSize: "100% 100%",
+          display: "flex",
+          flexDirection: "column",
+          flexWrap: "nowrap",
+          height: "100%",
+          justifyContent: "center",
+          textAlign: "center",
+          width: "100%",
+        }}
+      >
+        <div
+          style={{
+            color: "white",
+            display: "flex",
+            flexDirection: "column",
+            flexWrap: "nowrap",
+            fontSize: 50,
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {`You joined game!`}
+        </div>
+      </div>
+    ),
+  });
+});
+
+app.transaction("/join/:id", (c) => {
+  const { id } = c.req.param();
+
+  return c.contract({
+    abi,
+    chainId: "eip155:11155111",
+    functionName: "join",
+    args: [BigInt(id)],
+    to: "0x99d3224457679cb10996dd21120d9fc16e0697eb",
+  });
+});
+
+devtools(app, { serveStatic });
+
+export const GET = handle(app);
+export const POST = handle(app);
 
 // NOTE: That if you are using the devtools and enable Edge Runtime, you will need to copy the devtools
 // static assets to the public folder. You can do this by adding a script to your package.json:

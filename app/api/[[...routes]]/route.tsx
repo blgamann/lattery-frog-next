@@ -4,21 +4,21 @@ import { Button, Frog, TextInput, parseEther } from "frog";
 import { devtools } from "frog/dev";
 import { serveStatic } from "frog/serve-static";
 // import { neynar } from 'frog/hubs'
-import { handle } from "frog/vercel";
+import { handle } from "frog/next";
 import { abi } from "../../abi.ts";
 import { ethers } from "ethers";
 import axios from "axios";
 
-// Uncomment to use Edge Runtime
-// export const runtime = 'edge'
-
-export const app = new Frog({
+const app = new Frog({
   assetsPath: "/",
   basePath: "/api",
   // Supply a Hub to enable frame verification.
   // hub: neynar({ apiKey: 'NEYNAR_FROG_FM' })
   title: "Frog Frame",
 });
+
+// Uncomment to use Edge Runtime
+// export const runtime = 'edge'
 
 app.frame("/", (c) => {
   return c.res({
